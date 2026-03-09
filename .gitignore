@@ -1,0 +1,54 @@
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/.terraform.lock.hcl
+terraform/tfplan
+terraform/tfplan.*
+terraform/*.tfvars
+!terraform/terraform.tfvars.example
+terraform/crash.log
+terraform/crash.*.log
+terraform/*.override.tf
+terraform/*.override.tf.json
+
+# Lambda build artifact
+terraform/modules/lambda/lambda.zip
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+lambda/.venv/
+lambda/venv/
+venv/
+.eggs/
+*.egg-info/
+*.egg
+.env
+.env.*
+!.env.example
+
+# AWS / credentials (never commit)
+*.pem
+*.key
+.aws/
+credentials
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+*.log
+/tmp/
+*.tmp
