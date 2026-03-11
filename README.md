@@ -29,52 +29,9 @@ The pipeline is triggered by a CloudWatch alarm when the error count in the log 
 
 ## Architecture Diagram
 
-```
-                    ┌─────────────────┐
-                    │  Application /  │
-                    │  EC2 (app.log)  │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐
-                    │ CloudWatch      │
-                    │ Agent           │
-                    └────────┬────────┘
-                             │
-                             ▼
-                    ┌─────────────────┐     Metric Filter
-                    │ CloudWatch Logs │ ──────────────────┐
-                    └─────────────────┘                  │
-                                                            ▼
-                                                    ┌───────────────┐
-                                                    │ CloudWatch    │
-                                                    │ Alarm         │
-                                                    └───────┬───────┘
-                                                            │ invoke
-                                                            ▼
-                    ┌─────────────────────────────────────────────────┐
-                    │ Lambda (fetch, dedupe, build prompt)             │
-                    └─────────────────────────────────────────────────┘
-                                        │
-                                        │ HTTP POST
-                                        ▼
-                    ┌─────────────────┐     JSON analysis
-                    │ EC2             │ ──────────────────┐
-                    │ Ollama          │                  │
-                    │ (phi3:mini)     │                  │
-                    └─────────────────┘                  │
-                                                          ▼
-                    ┌─────────────────────────────────────────────────┐
-                    │ Lambda (parse, publish alert)                     │
-                    └─────────────────────────────────────────────────┘
-                                        │
-                                        ▼
-                    ┌─────────────────┐
-                    │ SNS Topic       │ ──────► Email subscribers
-                    └─────────────────┘
-```
+![AI Log Intelligence architecture](docs/architecture-diagram.png)
 
-**Simplified flow:** Logs → CloudWatch Logs → Metric Filter → Alarm → Lambda → Ollama (EC2) → Lambda → SNS → Email.
+*Flow: Logs → CloudWatch Logs → Metric Filter → Alarm → Lambda → Ollama (EC2) → Lambda → SNS → Email.*
 
 ---
 
@@ -106,27 +63,34 @@ The pipeline is triggered by a CloudWatch alarm when the error count in the log 
 ## Project Structure
 
 ```
-terraform/
-├── main.tf                  # Root: modules, log group, provider
-├── variables.tf
-├── outputs.tf
-├── terraform.tfvars        # Your values (not committed)
-└── modules/
-    ├── sns/                 # SNS topic (+ policy, prevent_destroy)
-    ├── ec2/                 # Ollama host + CloudWatch Agent
-    │   ├── main.tf
-    │   └── user_data.sh.tpl # Bootstrap: Ollama, log gen, CW agent
-    ├── lambda/              # IAM, DynamoDB, Lambda function
-    │   ├── main.tf
-    │   └── lambda.zip       # Built by build_lambda.sh
-    └── cloudwatch/          # Metric filter + alarm + permission
-
-lambda/
-└── src/
-    └── handler.py           # Lambda logic (fetch, dedupe, Ollama, parse, SNS)
-
-scripts/
-└── build_lambda.sh          # Packages lambda/src → lambda.zip
+ai-log-intelligence/
+├── README.md                # This file — overview, workflow, structure
+├── Configuration.md         # Prerequisites, deploy, post-deploy, variables, troubleshooting
+├── .gitignore              # Terraform state, tfvars, lambda.zip, credentials, etc.
+├── output/                  # Screenshots / artifacts (e.g. CloudWatch alarm, SNS alert)
+├── docs/                    # Documentation assets (e.g. architecture diagram)
+│
+├── terraform/               # Infrastructure as code
+│   ├── main.tf              # Root: modules, log group, provider
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── terraform.tfvars     # Your values (not committed; see .gitignore)
+│   └── modules/
+│       ├── sns/             # SNS topic (+ policy, prevent_destroy)
+│       ├── ec2/             # Ollama host + CloudWatch Agent
+│       │   ├── main.tf
+│       │   └── user_data.sh.tpl
+│       ├── lambda/          # IAM, DynamoDB, Lambda function
+│       │   ├── main.tf
+│       │   └── lambda.zip   # Built by build_lambda.sh (not committed)
+│       └── cloudwatch/      # Metric filter + alarm + permission
+│
+├── lambda/                  # Lambda function source
+│   └── src/
+│       └── handler.py       # Fetch logs, dedupe, call Ollama, parse, publish SNS
+│
+└── scripts/
+    └── build_lambda.sh      # Packages lambda/src → terraform/modules/lambda/lambda.zip
 ```
 
 ---

@@ -3,10 +3,6 @@
 resource "aws_sns_topic" "alerts" {
   name = var.topic_name
   tags = var.tags
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # Explicit policy so AWS does not silently drop email subscriptions
