@@ -57,15 +57,6 @@ lambda_timeout_seconds = 120
 lambda_memory_mb       = 256
 ```
 
-**How to get `vpc_id` and `subnet_id`:**
-
-- **Default VPC:**  
-  - VPC: AWS Console → VPC → Your VPCs → copy **VPC ID** of the default VPC.  
-  - Subnet: Subnets → filter by that VPC → pick a **public** subnet in an AZ that supports `m6i.xlarge` (e.g. `us-east-1a`).
-- **CLI:**  
-  - `aws ec2 describe-vpcs --filters "Name=isDefault,Values=true" --query "Vpcs[0].VpcId" --output text`  
-  - `aws ec2 describe-subnets --filters "Name=vpc-id,Values=YOUR_VPC_ID" "Name=defaultForAz,Values=true" --query "Subnets[*].[SubnetId,AvailabilityZone]" --output table`
-
 ---
 
 ## 3. Build the Lambda package
@@ -119,13 +110,17 @@ Then **confirm the subscription** via the link sent to your email.
 
 ### 5.2 Wait for EC2 (Ollama) bootstrap (~5–10 min)
 
-Get the EC2 public IP and SSH (use your key name and path to `.pem`):
+Lambda runs inside the VPC and uses the EC2 **private IP** for `OLLAMA_URL` to reach Ollama. For SSH and verification from your own machine, use the IP that matches how you connect:
+
+- **From the internet (your laptop):** use the EC2 **public** IP.
+- **From within the VPC (e.g. bastion or VPN):** use the EC2 **private** IP (e.g. from EC2 console or `aws ec2 describe-instances`).
 
 ```bash
-# From repo root
+# From repo root — use public IP for SSH from your laptop
 EC2_IP=$(cd terraform && terraform output -raw ec2_public_ip)
-echo "EC2 IP: $EC2_IP"
+echo "EC2 IP (for SSH): $EC2_IP"
 
+# If you connect from inside the VPC, set EC2_IP to the instance private IP instead
 ssh -i ~/.ssh/your-key.pem ubuntu@$EC2_IP 'tail -f /var/log/user-data.log'
 ```
 
@@ -168,32 +163,6 @@ Wait 1–2 minutes and check your SNS email. View the run in CloudWatch: log gro
 
 ---
 
-## Key Variables (Terraform)
-
-These can be set in `terraform/terraform.tfvars`. Required ones have no default.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `aws_region` | `us-east-1` | AWS region to deploy into. |
-| `project_name` | `ai-log-intelligence` | Prefix for resource names. |
-| `environment` | `prod` | Environment label (e.g. prod, staging). |
-| `ssh_key_name` | **required** | EC2 Key Pair name in the deployment region. |
-| `vpc_id` | **required** | VPC ID for the EC2 instance. |
-| `subnet_id` | **required** | Public subnet ID (AZ must support `ec2_instance_type`). |
-| `allowed_ssh_cidr` | `0.0.0.0/0` | CIDR allowed to SSH to EC2 (restrict in production). |
-| `log_group_name` | `/aws/ec2/ai-log-intelligence/app` | CloudWatch Log Group for app logs. |
-| `log_retention_days` | `14` | Log retention in days. |
-| `metric_namespace` | `AILogIntelligence` | CloudWatch custom metric namespace. |
-| `error_count_threshold` | `1` | Alarm fires when ERROR/WARN count ≥ this in the period. |
-| `alarm_period` | `60` | Alarm evaluation period (seconds). |
-| `sns_topic_name` | `ai-log-intelligence-prod-alerts` | SNS topic name (do not change after first apply). |
-| `ec2_instance_type` | `m6i.xlarge` | EC2 type for Ollama (~8 GB RAM for phi3:mini). |
-| `ec2_root_volume_size` | `40` | Root EBS volume size (GiB). |
-| `lambda_timeout_seconds` | `120` | Lambda timeout (Ollama can be slow). |
-| `lambda_memory_mb` | `256` | Lambda memory (MB). |
-
----
-
 ## Troubleshooting
 
 | Symptom | What to check |
@@ -202,14 +171,6 @@ These can be set in `terraform/terraform.tfvars`. Required ones have no default.
 | Invoke returns `skipped_idempotency` | Same log batch was processed recently. Clear the idempotency item (see step 5.4) to force a fresh run, or wait for new logs. |
 | CLI "Read timeout" when invoking Lambda | Use `--invocation-type Event` and check the result via SNS email and CloudWatch logs. |
 | Terraform: instance type not supported in AZ | Your `subnet_id` is in an AZ where the chosen `ec2_instance_type` is not offered (e.g. m6i.xlarge not in us-east-1e). Pick a subnet in us-east-1a, 1b, 1c, 1d, or 1f. |
-
----
-
-## Security Notes
-
-- The Ollama port (11434) is open to `0.0.0.0/0` by default. In production, restrict it (e.g. to Lambda’s egress or a VPC endpoint).
-- AWS credentials should be set via environment variables or `aws configure`; do not commit them or store in tfvars.
-- The SNS topic has `prevent_destroy` in Terraform. Create subscriptions via CLI or Console, not in Terraform.
 
 ---
 

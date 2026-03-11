@@ -27,14 +27,6 @@ The pipeline is triggered by a CloudWatch alarm when the error count in the log 
 
 ---
 
-## Architecture Diagram
-
-![AI Log Intelligence architecture](docs/architecture-diagram.png)
-
-*Flow: Logs → CloudWatch Logs → Metric Filter → Alarm → Lambda → Ollama (EC2) → Lambda → SNS → Email.*
-
----
-
 ## Workflow
 
 1. **Logs** — An app (or the EC2 host) writes logs; CloudWatch Agent ships them to CloudWatch Logs.
@@ -65,10 +57,11 @@ The pipeline is triggered by a CloudWatch alarm when the error count in the log 
 ```
 ai-log-intelligence/
 ├── README.md                # This file — overview, workflow, structure
-├── Configuration.md         # Prerequisites, deploy, post-deploy, variables, troubleshooting
-├── .gitignore              # Terraform state, tfvars, lambda.zip, credentials, etc.
+├── .gitignore               # Terraform state, tfvars, lambda.zip, credentials, etc.
 ├── output/                  # Screenshots / artifacts (e.g. CloudWatch alarm, SNS alert)
-├── docs/                    # Documentation assets (e.g. architecture diagram)
+├── docs/                    # Documentation
+│   ├── Configuration.md    # Prerequisites, deploy, post-deploy, variables, troubleshooting
+│   └── architecture-diagram.png
 │
 ├── terraform/               # Infrastructure as code
 │   ├── main.tf              # Root: modules, log group, provider
@@ -97,7 +90,7 @@ ai-log-intelligence/
 
 ## Setup / Deployment
 
-For prerequisites, deploy steps, post-deploy steps, key variables, troubleshooting, security notes, teardown, and Lambda environment variables, see **[Configuration.md](Configuration.md)**.
+For prerequisites, deploy steps, post-deploy steps, key variables, troubleshooting, security notes, teardown, and Lambda environment variables, see **[docs/Configuration.md](docs/Configuration.md)**.
 
 ---
 
