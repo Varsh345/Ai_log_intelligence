@@ -19,16 +19,7 @@ Before you begin, ensure you have:
 
 ---
 
-## 1. Clone the repository
-
-```bash
-git clone https://github.com/Varsh345/Ai_log_intelligence.git
-cd Ai_log_intelligence
-```
-
----
-
-## 2. Create Terraform variables file
+## 1. Create Terraform variables file
 
 Copy the example (if present) or create `terraform/terraform.tfvars` with your values. **Minimum required:**
 
@@ -59,7 +50,7 @@ lambda_memory_mb       = 256
 
 ---
 
-## 3. Build the Lambda package
+## 2. Build the Lambda package
 
 From the repo root:
 
@@ -71,7 +62,7 @@ This produces `terraform/modules/lambda/lambda.zip`. Run this before the first `
 
 ---
 
-## 4. Set AWS credentials and deploy with Terraform
+## 3. Set AWS credentials and deploy with Terraform
 
 Export credentials (or use `aws configure`), then run Terraform from the `terraform` directory:
 
@@ -90,9 +81,9 @@ Confirm with `yes` when prompted. Note the outputs (e.g. `ec2_public_ip`, `sns_t
 
 ---
 
-## 5. Post-deploy configuration
+## 4. Post-deploy configuration
 
-### 5.1 Subscribe your email to SNS alerts
+### 4.1 Subscribe your email to SNS alerts
 
 Use the SNS topic ARN from Terraform output (so it works for any account/region):
 
@@ -108,7 +99,7 @@ aws sns subscribe \
 
 Then **confirm the subscription** via the link sent to your email.
 
-### 5.2 Wait for EC2 (Ollama) bootstrap (~5–10 min)
+### 4.2 Wait for EC2 (Ollama) bootstrap (~5–10 min)
 
 Lambda runs inside the VPC and uses the EC2 **private IP** for `OLLAMA_URL` to reach Ollama. For SSH and verification from your own machine, use the IP that matches how you connect:
 
@@ -126,7 +117,7 @@ ssh -i ~/.ssh/your-key.pem ubuntu@$EC2_IP 'tail -f /var/log/user-data.log'
 
 Wait until you see `=== Bootstrap complete ===`.
 
-### 5.3 Verify Ollama is running
+### 4.3 Verify Ollama is running
 
 ```bash
 curl "http://$EC2_IP:11434/api/tags"
@@ -134,7 +125,7 @@ curl "http://$EC2_IP:11434/api/tags"
 
 You should see JSON listing `phi3:mini`. Optionally keep Ollama warm with a periodic request to reduce "No response from model" when the alarm fires.
 
-### 5.4 Test the pipeline (optional)
+### 4.4 Test the pipeline (optional)
 
 Lambda can run up to ~2 minutes. Use **async invocation** to avoid CLI timeouts. Use Terraform outputs for the idempotency table and function name so it works in any deployment:
 
@@ -168,7 +159,7 @@ Wait 1–2 minutes and check your SNS email. View the run in CloudWatch: log gro
 | Symptom | What to check |
 |--------|----------------|
 | Email says "No response from model" | Ollama on EC2 may be cold or unreachable. Ensure EC2 is running, security group allows inbound 11434, and consider warming Ollama (e.g. periodic `curl`). Check Lambda logs in CloudWatch for `Ollama request failed` or timeouts. |
-| Invoke returns `skipped_idempotency` | Same log batch was processed recently. Clear the idempotency item (see step 5.4) to force a fresh run, or wait for new logs. |
+| Invoke returns `skipped_idempotency` | Same log batch was processed recently. Clear the idempotency item (see step 4.4) to force a fresh run, or wait for new logs. |
 | CLI "Read timeout" when invoking Lambda | Use `--invocation-type Event` and check the result via SNS email and CloudWatch logs. |
 | Terraform: instance type not supported in AZ | Your `subnet_id` is in an AZ where the chosen `ec2_instance_type` is not offered (e.g. m6i.xlarge not in us-east-1e). Pick a subnet in us-east-1a, 1b, 1c, 1d, or 1f. |
 
